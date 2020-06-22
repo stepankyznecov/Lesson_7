@@ -29,10 +29,7 @@ public:
     }
     ~threadpool()
     {
-       for (int i = 0; i < threads.size(); i++)
-       {
-          threads[i].join();
-       }
+        
     }
     void addTask(function<void()> func)
     {
@@ -56,23 +53,37 @@ public:
         {
             threads.push_back(thread([this]()
                 {
-                    while (flag)
+                    try
                     {
-                        for (int i = 0; i < queue.size(); i++)
+                        while (flag)
                         {
-
-                            if (queue[i].status == statuses[0])
+                            unique_lock<mutex>mtx2(blocker);
+                            for (int i = 0; i < queue.size(); i++)
                             {
-                                queue[i].status = statuses[1];
-                                queue[i].func();
-                                queue[i].status = statuses[2];
-                                break;
+                                if (queue[i].status == statuses[0])
+                                {
+                                    queue[i].status = statuses[1];
+                                    mtx2.unlock();
+                                    queue[i].func();
+                                    mtx2.lock();
+                                    queue[i].status = statuses[2];
+                                    break;
+                                }
                             }
                         }
                     }
-            }));
+                    catch (const std::exception&)
+                    {
+                        cout << "Error: exeption was called" << endl;
+                    }           
+                }));
+        }
+        for (auto& x : threads)
+        {
+            x.join();
         }
     }
+
     void end()
     {
         flag = false;
@@ -95,7 +106,7 @@ public:
 
 private:
     vector<task> queue;
-    const vector<string> statuses = {"Waiting","In process","Complete"};
+    const vector<string> statuses = { "Waiting","In process","Complete" };
     mutex blocker;
     vector<thread> threads;
     bool flag;
@@ -121,24 +132,21 @@ void test1(int x, int y)
 
 string test2()
 {
-    this_thread::sleep_for(chrono::milliseconds(1000));
-    cout << "8=D\n";
-    return "8=D\n";
+    //this_thread::sleep_for(chrono::milliseconds(500));
+    cout << ":-^)\n";
+    return ":-^)\n";
 }
 
 int main()
 {
     threadpool tp;
-    tp.addTask([&]() {test2(); });
-    tp.addTask([&]() {test2(); });
-    tp.addTask([&]() {test2(); });
-    tp.addTask([&]() {test2(); });
-    tp.addTask([&]() {test2(); });
-    tp.addTask([&]() {test2(); });
-    tp.addTask([&]() {test2(); });
-    tp.addTask([&]() {tp.end(); });
-    cout << tp.getStatus(4);
-    tp.run(5);
-
-
+    thread th([&]() {
+        for (int i = 0; i < 500; i++)
+        {
+            tp.addTask([&]() {test2(); });
+        }
+        tp.addTask([&]() {tp.end(); });
+    });
+    cout << tp.getStatus(4) << endl;
+    th.join();
 }
