@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <thread>
 #include <vector>
 #include <string>
@@ -75,6 +75,7 @@ public:
                     catch (const std::exception&)
                     {
                         cout << "Error: exeption was called" << endl;
+                        return;
                     }           
                 }));
         }
@@ -148,5 +149,6 @@ int main()
         tp.addTask([&]() {tp.end(); });
     });
     cout << tp.getStatus(4) << endl;
+    tp.run(3);
     th.join();
 }
